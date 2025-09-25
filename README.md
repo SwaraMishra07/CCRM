@@ -1,8 +1,6 @@
----
-
 # Campus Course & Records Manager (CCRM)
 
-# 1. Project Overview
+## 1. Project Overview
 
 **CCRM** is a console-based Java application that allows institutes to manage:
 
@@ -164,4 +162,3 @@ java -cp bin edu.ccrm.cli.Main
 * [x] Eclipse setup screenshots
 * [x] Mapping table: syllabus topic → file/class/method
 * [x] Sample commands & test data CSVs
----
