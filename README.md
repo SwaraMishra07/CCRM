@@ -2,7 +2,7 @@
 
 # Campus Course & Records Manager (CCRM)
 
-## 1. Project Overview
+# 1. Project Overview
 
 **CCRM** is a console-based Java application that allows institutes to manage:
 
