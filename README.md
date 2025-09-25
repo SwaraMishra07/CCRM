@@ -148,12 +148,6 @@ java -cp bin edu.ccrm.cli.Main
 
 ---
 
-## 7. Optional Demo Video
-
-*(Provide a link to 2–5 min demo showing key functionalities)*
-
----
-
 ## 8. References / Acknowledgements
 
 * Java official documentation: [https://docs.oracle.com/en/java/](https://docs.oracle.com/en/java/)
