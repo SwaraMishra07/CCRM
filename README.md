@@ -137,12 +137,65 @@ java -cp bin edu.ccrm.cli.Main
 
 ## 6. Screenshots
 
-*(Add screenshots folder and link images here)*
+<img width="500" height="150" alt="Screenshot 2025-09-25 185502" src="https://github.com/user-attachments/assets/6510aec5-3e93-4966-b472-297fb0152c7f" />
 
-1. JDK installation verification (`java -version`)
-2. Eclipse project setup and run
-3. Menu operations and sample outputs
-4. Exported CSVs & Backup folder structure
+
+---
+
+## 7. About Java
+
+### 📌 Evolution of Java (Short Timeline)
+
+1991 → Project "Oak" started by James Gosling at Sun Microsystems.
+
+1995 → Renamed to Java, officially released.
+
+1996 → First JDK (Java Development Kit 1.0).
+
+1998 → Java 2 introduced (with SE, EE, ME editions).
+
+2006 → Sun released Java as open-source (OpenJDK).
+
+2009 → Oracle acquired Sun Microsystems → Java under Oracle.
+
+2014 → Java 8 released (major update: Lambdas, Streams, etc.).
+
+2017 → Java 9 (modules), Oracle moved to 6-month release cycle.
+
+Now → Latest stable version is Java 21 (LTS) (2023).
+
+
+
+---
+
+### 📌 Java Editions (Comparison)
+
+Edition	Full Form	Use Case	Example Applications
+
+Java SE	Standard Edition	Core Java (basic libraries, desktop apps, standalone programs)	Calculator, Text Editor
+Java EE	Enterprise Edition	Extends SE with APIs for web & enterprise apps	E-commerce, Banking Apps
+Java ME	Micro Edition	Subset of SE for mobile & embedded devices	Early Android (pre-2008), IoT
+
+
+
+---
+
+### 📌 Java Architecture (JDK, JRE, JVM)
+
+JDK (Java Development Kit) → Complete package for developers (includes JRE + tools like compiler javac, debugger, etc.).
+
+JRE (Java Runtime Environment) → Used to run Java applications (includes JVM + libraries).
+
+JVM (Java Virtual Machine) → Executes bytecode (platform-independent), converts it into machine code for the OS/Hardware.
+
+
+🔗 Interaction:
+
+Developer writes .java → Compiler (javac in JDK) converts it into .class (bytecode).
+
+JVM executes bytecode with help of JRE libraries.
+
+JDK = JRE + Development tools, JRE = JVM + Libraries.
 
 ---
 
@@ -152,13 +205,3 @@ java -cp bin edu.ccrm.cli.Main
 * StackOverflow for coding clarifications
 * CSV reading/writing utilities examples
 
----
-
-## 9. README Checklist
-
-* [x] Java evolution timeline
-* [x] Java ME vs SE vs EE table
-* [x] JDK / JRE / JVM explanation
-* [x] Eclipse setup screenshots
-* [x] Mapping table: syllabus topic → file/class/method
-* [x] Sample commands & test data CSVs
