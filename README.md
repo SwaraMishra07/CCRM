@@ -137,7 +137,7 @@ java -cp bin edu.ccrm.cli.Main
 
 ## 6. Screenshots
 
-<img width="500" height="150" alt="Screenshot 2025-09-25 185502" src="https://github.com/user-attachments/assets/6510aec5-3e93-4966-b472-297fb0152c7f" />
+https://github.com/SwaraMishra07/CCRM/tree/main/screenshots
 
 
 ---
@@ -205,3 +205,5 @@ JDK = JRE + Development tools, JRE = JVM + Libraries.
 * StackOverflow for coding clarifications
 * CSV reading/writing utilities examples
 
+## Made by Swara Mishra
+<img width="220" height="77" alt="Screenshot 2025-09-19 104108" src="https://github.com/user-attachments/assets/1e71dbcc-4b3e-44ac-a5ed-c75feca1b743" />
