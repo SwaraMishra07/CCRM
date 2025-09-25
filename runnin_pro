@@ -1,2 +1,2 @@
-javac -d bin src/edu/ccrm/domain/*.java src/edu/ccrm/io/*.java src/edu/ccrm/cli/*.java src/edu/ccrm/service/*.java src/edu/ccrm/config/*.java src/edu/ccrm/util/*.java
+javac -d bin src/edu/ccrm/cli/Main.java src/edu/ccrm/config/AppConfig.java src/edu/ccrm/service/CCRMService.java src/edu/ccrm/domain/*.java src/edu/ccrm/exceptions/*.java src/edu/ccrm/io/*.java src/edu/ccrm/util/*.java
 java -cp bin edu.ccrm.cli.Main

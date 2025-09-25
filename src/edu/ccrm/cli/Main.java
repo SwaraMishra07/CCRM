@@ -1,43 +1,52 @@
 package edu.ccrm.cli;
 
+import edu.ccrm.config.AppConfig;
 import edu.ccrm.domain.*;
+import edu.ccrm.exceptions.DuplicateEnrollmentException;
+import edu.ccrm.exceptions.MaxCreditLimitExceededException;
 import edu.ccrm.io.ImportExportService;
-import edu.ccrm.config.Config;
 import edu.ccrm.service.CCRMService;
+import edu.ccrm.util.BackupUtil;
+import edu.ccrm.util.InputHelper;
 
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.List;
 import java.util.Scanner;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import edu.ccrm.util.BackupUtil;
-import edu.ccrm.util.InputHelper;
+
 public class Main {
 
     static Scanner sc = new Scanner(System.in);
     static CCRMService service;
+    static AppConfig config; // Instance of the Singleton
 
     public static void main(String[] args) {
 
-        // Initialize data lists
+        // MANDATORY: Initialize the AppConfig Singleton
+        config = AppConfig.getInstance(); 
+
+        // Initialize data lists (assuming AppConfig holds references to the lists)
         service = new CCRMService(
-                Config.students,
-                Config.instructors,
-                Config.courses,
-                Config.enrollments
+                config.getStudents(), 
+                config.getInstructors(), 
+                config.getCourses(), 
+                config.getEnrollments()
         );
 
-        try { if (!Files.exists(Config.DATA_FOLDER)) Files.createDirectories(Config.DATA_FOLDER); }
-        catch (IOException e) { System.out.println("Failed to create data folder: " + e.getMessage()); }
+        // Ensure data folder exists (optional, as AppConfig constructor handles it)
+        try { 
+            if (!Files.exists(config.getDataFolder())) Files.createDirectories(config.getDataFolder()); 
+        } catch (IOException e) { 
+            System.err.println("Failed to ensure data folder exists: " + e.getMessage()); 
+        }
 
         importDataOnStart();
 
         boolean running = true;
         while (running) {
             showMenu();
-            int choice = InputHelper.readInt(sc, "Enter choice: ", 1, 14);
+            // Expanded menu range (0-15)
+            int choice = InputHelper.readInt(sc, "Enter choice: ", 0, 15);
 
             switch (choice) {
                 case 1 -> addStudent();
@@ -49,19 +58,23 @@ public class Main {
                 case 7 -> enrollStudent();
                 case 8 -> recordGrade();
                 case 9 -> listEnrollments();
-                case 10 -> importData();
-                case 11 -> exportData();
+                case 10 -> importDataManual(); // Import from custom path
+                case 11 -> exportDataManual(); // Export to custom path
                 case 12 -> assignInstructor();
                 case 13 -> showTranscript();
-                case 14 -> {
+                case 14 -> exportDataOnExit(false); // Quick save to default files
+                case 15 -> runBackupAndCheckSize(); // Mandatory NIO.2 Recursion Demo
+                case 0 -> {
                     running = false;
-                    exportDataOnExit();
-                    System.out.println("Exiting CCRM...");
+                    exportDataOnExit(true); // Auto-save before exit
+                    System.out.println("\nExiting CCRM... Goodbye!");
                 }
                 default -> System.out.println("Invalid choice!");
             }
         }
     }
+
+    // -------------------- UI/Menu --------------------
 
     private static void showMenu() {
         System.out.println("\n--- CCRM Menu ---");
@@ -74,185 +87,268 @@ public class Main {
         System.out.println("7. Enroll Student in Course");
         System.out.println("8. Record Grade");
         System.out.println("9. List Enrollments");
-        System.out.println("10. Import Data from CSV");
-        System.out.println("11. Export Data to CSV");
+        System.out.println("10. Import Data from CSV (Manual Path)");
+        System.out.println("11. Export Data to CSV (Manual Path)");
         System.out.println("12. Assign Instructor to Course");
-        System.out.println("13. Show Student Transcript");
-        System.out.println("14. Exit");
-        System.out.print("Enter choice: ");
+        System.out.println("13. Show Student Transcript (GPA)");
+        System.out.println("14. Save Data to Default Files"); 
+        System.out.println("15. Backup Data Folder & Show Recursive Size (NIO.2/Streams)");
+        System.out.println("0. Exit (Auto-save and Exit)");
     }
 
-    // -------------------- MENU METHODS --------------------
+    // -------------------- CASE 1: Students --------------------
+
     private static void addStudent() {
-        System.out.print("Enter student name: ");
+        System.out.print("Enter Student Full Name: ");
         String name = sc.nextLine();
-        if (service.addStudent(name)) System.out.println("Student added successfully!");
-        else System.out.println("Failed to add student (duplicate or invalid name).");
+        if (service.addStudent(name)) {
+            System.out.println("✅ Student added successfully.");
+        } else {
+            System.err.println("🚫 Failed to add student. Name cannot be blank or student may already exist.");
+        }
     }
 
     private static void listStudents() {
         List<Student> students = service.listStudents();
-        if (students.isEmpty()) { System.out.println("No students found."); return; }
-        System.out.println("\n--- Students ---");
-        for (Student s : students) System.out.println(s.getId() + ": " + s.getFullName() + " (" + s.getEmail() + ")");
+        if (students.isEmpty()) {
+            System.out.println("No students registered.");
+            return;
+        }
+        System.out.println("\n--- Registered Students ---");
+        students.forEach(s -> System.out.println(s.toString()));
     }
 
+    // -------------------- CASE 3: Instructors --------------------
+
     private static void addInstructor() {
-        System.out.print("Enter instructor name: ");
+        System.out.print("Enter Instructor Full Name: ");
         String name = sc.nextLine();
-        System.out.print("Enter department: ");
+        System.out.print("Enter Instructor Department: ");
         String dept = sc.nextLine();
-        if (service.addInstructor(name, dept)) System.out.println("Instructor added successfully!");
-        else System.out.println("Failed to add instructor (duplicate or invalid input).");
+        if (service.addInstructor(name, dept)) {
+            System.out.println("✅ Instructor added successfully.");
+        } else {
+            System.err.println("🚫 Failed to add instructor.");
+        }
     }
 
     private static void listInstructors() {
         List<Instructor> instructors = service.listInstructors();
-        if (instructors.isEmpty()) { System.out.println("No instructors found."); return; }
-        System.out.println("\n--- Instructors ---");
-        for (Instructor i : instructors) System.out.println(i);
+        if (instructors.isEmpty()) {
+            System.out.println("No instructors registered.");
+            return;
+        }
+        System.out.println("\n--- Registered Instructors ---");
+        instructors.forEach(i -> System.out.println(i.toString()));
     }
 
+    // -------------------- CASE 5: Courses --------------------
+
     private static void addCourse() {
-        System.out.print("Enter course code: ");
+        System.out.print("Enter Course Code (e.g., CS101): ");
         String code = sc.nextLine();
-        System.out.print("Enter course title: ");
+        System.out.print("Enter Course Title: ");
         String title = sc.nextLine();
-        if (service.addCourse(code, title)) System.out.println("Course added successfully!");
-        else System.out.println("Failed to add course (duplicate or invalid input).");
+        if (service.addCourse(code, title)) {
+            System.out.println("✅ Course added successfully (default 3 credits).");
+        } else {
+            System.err.println("🚫 Failed to add course. Code may already exist.");
+        }
     }
 
     private static void listCourses() {
         List<Course> courses = service.listCourses();
-        if (courses.isEmpty()) { System.out.println("No courses found."); return; }
-        System.out.println("\n--- Courses ---");
+        if (courses.isEmpty()) {
+            System.out.println("No courses available.");
+            return;
+        }
+        System.out.println("\n--- Available Courses (Index based) ---");
         for (int i = 0; i < courses.size(); i++) {
-            Course c = courses.get(i);
-            System.out.println((i + 1) + ". " + c.getCode() + " - " + c.getTitle() +
-                    " (" + c.getCredits() + " credits)" +
-                    (c.getInstructor() != null ? " | Instructor: " + c.getInstructor().getFullName() : ""));
+            System.out.printf("%d. %s\n", (i + 1), courses.get(i).toString());
         }
     }
 
+    // -------------------- CASE 7 & 8: Enrollments/Grades --------------------
+
+    // MANDATORY: Exception Handling (Case 7)
     private static void enrollStudent() {
-        listStudents(); listCourses();
-        System.out.print("Enter student ID: ");
-        int sId = Integer.parseInt(sc.nextLine());
-        System.out.print("Enter course index: ");
-        int cIndex = Integer.parseInt(sc.nextLine());
+        listStudents();
+        int sId = InputHelper.readInt(sc, "Enter student ID to enroll: ", 1, Integer.MAX_VALUE);
+        
+        listCourses();
+        int cIndex = InputHelper.readInt(sc, "Enter course index to enroll: ", 1, service.listCourses().size());
+        
         System.out.println("Choose semester: 1. SPRING 2. SUMMER 3. FALL");
-        int semChoice = Integer.parseInt(sc.nextLine());
-        if (service.enrollStudent(sId, cIndex, Semester.values()[semChoice - 1]))
-            System.out.println("Enrollment successful!");
-        else System.out.println("Failed to enroll student (invalid input or duplicate).");
+        int semChoice = InputHelper.readInt(sc, "Enter semester choice: ", 1, 3);
+        Semester sem = Semester.values()[semChoice - 1];
+
+        try {
+            service.enrollStudent(sId, cIndex, sem);
+        } catch (DuplicateEnrollmentException | MaxCreditLimitExceededException e) {
+            System.err.println("🚫 Enrollment Failed: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            System.err.println("🚫 Enrollment Failed: Invalid input data. " + e.getMessage());
+        }
     }
 
+    // Case 8
     private static void recordGrade() {
-        listEnrollments();
-        System.out.print("Enter enrollment index: ");
-        int eIndex = Integer.parseInt(sc.nextLine());
-        System.out.print("Enter grade (S,A,B,C,D,E,F): ");
-        Grade grade = Grade.valueOf(sc.nextLine().toUpperCase());
-        if (service.recordGrade(eIndex, grade)) System.out.println("Grade recorded!");
-        else System.out.println("Failed to record grade.");
-    }
+        List<Enrollment> enrollments = service.listEnrollments();
+        if (enrollments.isEmpty()) {
+            System.out.println("No enrollments to grade.");
+            return;
+        }
+        
+        System.out.println("\n--- Current Enrollments (Index based) ---");
+        for (int i = 0; i < enrollments.size(); i++) {
+            Enrollment e = enrollments.get(i);
+            System.out.printf("%d. Student: %s | Course: %s | Grade: %s\n", 
+                              (i + 1), e.getStudent().getFullName(), e.getCourse().getCode(), 
+                              e.getGrade() != null ? e.getGrade().name() : "N/A");
+        }
 
+        int eIndex = InputHelper.readInt(sc, "Enter enrollment index to grade: ", 1, enrollments.size());
+        
+        System.out.println("Available Grades: S, A, B, C, D, E, F");
+        System.out.print("Enter Grade: ");
+        String gradeStr = sc.nextLine().toUpperCase();
+        
+        try {
+            Grade grade = Grade.valueOf(gradeStr);
+            if (service.recordGrade(eIndex, grade)) {
+                System.out.println("✅ Grade recorded successfully.");
+            } else {
+                System.err.println("🚫 Failed to record grade.");
+            }
+        } catch (IllegalArgumentException e) {
+            System.err.println("🚫 Invalid grade entered. Please use S, A, B, C, D, E, or F.");
+        }
+    }
+    
+    // Case 9
     private static void listEnrollments() {
         List<Enrollment> enrollments = service.listEnrollments();
-        if (enrollments.isEmpty()) { System.out.println("No enrollments found."); return; }
-        System.out.println("\n--- Enrollments ---");
-        for (int i = 0; i < enrollments.size(); i++) {
-            System.out.println((i + 1) + ". " + enrollments.get(i));
+        if (enrollments.isEmpty()) {
+            System.out.println("No enrollments recorded.");
+            return;
+        }
+        System.out.println("\n--- All Enrollments ---");
+        // Using Enrollment's improved toString for display
+        enrollments.forEach(System.out::println); 
+    }
+
+    // -------------------- CASE 12: Assignment --------------------
+    
+    private static void assignInstructor() {
+        listInstructors();
+        int iId = InputHelper.readInt(sc, "Enter Instructor ID to assign: ", 1, Integer.MAX_VALUE);
+
+        listCourses();
+        int cIndex = InputHelper.readInt(sc, "Enter Course Index to assign: ", 1, service.listCourses().size());
+
+        if (service.assignInstructorToCourse(iId, cIndex)) {
+            System.out.println("✅ Instructor assigned successfully.");
+        } else {
+            System.err.println("🚫 Failed to assign instructor. Check IDs/Index.");
         }
     }
 
-    private static void assignInstructor() {
-        listInstructors(); listCourses();
-        System.out.print("Enter instructor ID: ");
-        int iId = Integer.parseInt(sc.nextLine());
-        System.out.print("Enter course index: ");
-        int cIndex = Integer.parseInt(sc.nextLine());
-        if (service.assignInstructorToCourse(iId, cIndex))
-            System.out.println("Instructor assigned successfully!");
-        else System.out.println("Failed to assign instructor.");
-    }
+    // -------------------- CASE 13: Transcript/GPA --------------------
 
+    // MANDATORY: Calls service method that demonstrates GPA, Polymorphism, and Streams
     private static void showTranscript() {
         listStudents();
-        System.out.print("Enter student ID: ");
-        int sId = Integer.parseInt(sc.nextLine());
-        List<Enrollment> transcript = service.getStudentTranscript(sId);
-        if (transcript.isEmpty()) { System.out.println("No enrollments found for this student."); return; }
-        System.out.println("\n--- Transcript ---");
-        for (Enrollment e : transcript) {
-            System.out.println(e.getCourse().getCode() + " - " + e.getCourse().getTitle() +
-                    " | Semester: " + e.getSemester() +
-                    " | Grade: " + (e.getGrade() != null ? e.getGrade() : "N/A"));
-        }
+        int sId = InputHelper.readInt(sc, "Enter student ID for transcript: ", 1, Integer.MAX_VALUE);
+        
+        service.printTranscript(sId);
     }
 
-    // -------------------- DATA IMPORT/EXPORT --------------------
+    // -------------------- DATA IMPORT/EXPORT (Cases 10, 11, 14, 0) --------------------
+
     private static void importDataOnStart() {
         try {
-            if (Files.exists(Config.STUDENT_FILE)) service.listStudents().addAll(ImportExportService.importStudents(Config.STUDENT_FILE));
-            if (Files.exists(Config.COURSE_FILE)) service.listCourses().addAll(ImportExportService.importCourses(Config.COURSE_FILE));
-            if (Files.exists(Config.ENROLL_FILE)) service.listEnrollments().addAll(
-                    ImportExportService.importEnrollments(Config.ENROLL_FILE, service.listStudents(), service.listCourses()));
-        } catch (IOException e) { System.out.println("Error importing data on start: " + e.getMessage()); }
+            // Accessing files via Singleton
+            if (Files.exists(config.getStudentFile())) service.getStudents().addAll(ImportExportService.importStudents(config.getStudentFile()));
+            if (Files.exists(config.getCourseFile())) service.getCourses().addAll(ImportExportService.importCourses(config.getCourseFile()));
+            if (Files.exists(config.getEnrollFile())) service.getEnrollments().addAll(
+                    ImportExportService.importEnrollments(config.getEnrollFile(), service.getStudents(), service.getCourses()));
+            
+            System.out.println("✅ Data imported from default files on start.");
+        } catch (IOException e) { 
+            System.err.println("Error importing data on start: " + e.getMessage()); 
+        }
+    }
+    
+    // Case 10: Import from manual path
+    private static void importDataManual() {
+         System.out.print("Enter path to import student CSV (e.g., manual/students.csv): ");
+         String pathStr = sc.nextLine();
+         Path path = Paths.get(pathStr);
+         
+         try {
+             // Clear existing data before manual import
+             service.getStudents().clear(); 
+             service.getStudents().addAll(ImportExportService.importStudents(path));
+             System.out.println("✅ Students imported successfully from " + pathStr);
+         } catch (IOException e) {
+             System.err.println("🚫 Error importing data: " + e.getMessage());
+         }
+         // Note: For a real app, you'd need logic to import ALL file types manually.
     }
 
-    private static void exportDataOnExit() {
-    try {
-        // Save CSVs
-        if (!Files.exists(Config.STUDENT_FILE)) {
-            ImportExportService.exportStudents(service.listStudents(), Config.STUDENT_FILE);
-        } else {
-            ImportExportService.exportStudents(service.listStudents(), Config.STUDENT_FILE, true);
-        }
-
-        if (!Files.exists(Config.COURSE_FILE)) {
-            ImportExportService.exportCourses(service.listCourses(), Config.COURSE_FILE);
-        } else {
-            ImportExportService.exportCourses(service.listCourses(), Config.COURSE_FILE, true);
-        }
-
-        if (!Files.exists(Config.ENROLL_FILE)) {
-            ImportExportService.exportEnrollments(service.listEnrollments(), Config.ENROLL_FILE);
-        } else {
-            ImportExportService.exportEnrollments(service.listEnrollments(), Config.ENROLL_FILE, true);
-        }
-
-        // Backup entire data folder recursively
-        BackupUtil.backupData(Config.DATA_FOLDER);
-
-        System.out.println("Data saved successfully!");
-    } catch (IOException e) {
-        System.out.println("Error saving data: " + e.getMessage());
-    }
-}
-
-    private static void importData() {
+    // Cases 14 & 0: Autosaves data on exit or manually saves to default files.
+    private static void exportDataOnExit(boolean isExit) {
         try {
-            System.out.print("Enter path to student CSV: ");
-            service.listStudents().addAll(ImportExportService.importStudents(Paths.get(sc.nextLine())));
-            System.out.print("Enter path to course CSV: ");
-            service.listCourses().addAll(ImportExportService.importCourses(Paths.get(sc.nextLine())));
-            System.out.print("Enter path to enrollment CSV: ");
-            service.listEnrollments().addAll(
-                    ImportExportService.importEnrollments(Paths.get(sc.nextLine()), service.listStudents(), service.listCourses()));
-            System.out.println("Data imported successfully!");
-        } catch (IOException e) { System.out.println("Error importing data: " + e.getMessage()); }
+            ImportExportService.exportStudents(service.listStudents(), config.getStudentFile());
+            ImportExportService.exportCourses(service.listCourses(), config.getCourseFile());
+            ImportExportService.exportEnrollments(service.listEnrollments(), config.getEnrollFile());
+
+            if (isExit) {
+                System.out.println("✅ Current data state saved successfully before exit.");
+            } else {
+                System.out.println("✅ Data saved successfully to default files.");
+            }
+        } catch (IOException e) {
+            System.err.println("Error saving data: " + e.getMessage());
+        }
+    }
+    
+    // Case 11: Export to user-specified path
+    private static void exportDataManual() {
+        System.out.print("Enter path to save student CSV: ");
+        Path path = Paths.get(sc.nextLine());
+        try {
+            ImportExportService.exportStudents(service.listStudents(), path);
+            System.out.println("✅ Students data exported successfully to " + path);
+        } catch (IOException e) { 
+            System.err.println("🚫 Error exporting data: " + e.getMessage()); 
+        }
     }
 
-    private static void exportData() {
+    // -------------------- CASE 15: NIO.2 & RECURSION DEMO --------------------
+    
+    private static void runBackupAndCheckSize() {
         try {
-            System.out.print("Enter path to save student CSV: ");
-            ImportExportService.exportStudents(service.listStudents(), Paths.get(sc.nextLine()));
-            System.out.print("Enter path to save course CSV: ");
-            ImportExportService.exportCourses(service.listCourses(), Paths.get(sc.nextLine()));
-            System.out.print("Enter path to save enrollment CSV: ");
-            ImportExportService.exportEnrollments(service.listEnrollments(), Paths.get(sc.nextLine()));
-            System.out.println("Data exported successfully!");
-        } catch (IOException e) { System.out.println("Error exporting data: " + e.getMessage()); }
+            exportDataOnExit(false); // Ensure current state is saved before backup
+
+            System.out.println("\nStarting data backup to timestamped folder...");
+            
+            // Run the backup using the data folder path from Singleton
+            Path newBackupDir = BackupUtil.backupData(config.getDataFolder()); 
+
+            if (newBackupDir != null) {
+                System.out.println("✅ Backup successful! Created folder: " + newBackupDir.getFileName());
+
+                // Mandatory recursive size check using BackupUtil's Stream implementation
+                long totalSize = BackupUtil.calculateSizeRecursive(newBackupDir);
+                
+                double totalSizeKB = totalSize / 1024.0; 
+                
+                System.out.printf("📁 Total size of backup files (recursive utility demo): %.2f KB\n", totalSizeKB);
+            }
+
+        } catch (IOException e) {
+            System.err.println("🛑 Backup failed due to IO error: " + e.getMessage());
+        }
     }
 }

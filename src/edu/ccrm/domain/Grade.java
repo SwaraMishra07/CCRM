@@ -1,3 +1,4 @@
+// edu.ccrm.domain.Grade.java (Refined Naming)
 package edu.ccrm.domain;
 
 public enum Grade {
@@ -9,13 +10,16 @@ public enum Grade {
     E(5),
     F(0); // fail
 
-    private final int gradePoints;
+    // Use 'pointValue' or 'gpaPoints' for clarity in service calculations
+    private final int pointValue; 
 
-    Grade(int points) {
-        this.gradePoints = points;
+    // Mandatory: Constructor in enum
+    Grade(int pointValue) {
+        this.pointValue = pointValue;
     }
 
-    public int getGradePoints() {
-        return gradePoints;
+    // Getter for the value
+    public int getPointValue() { 
+        return pointValue;
     }
 }
