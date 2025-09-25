@@ -13,7 +13,7 @@ public class Instructor extends Person {
         return "Instructor";
     }
 
-    public String getDepartment() {
+    public String getDepartmsent() {
         return department;
     }
 

@@ -203,35 +203,33 @@ public class Main {
 
     private static void exportDataOnExit() {
     try {
-        // Append students
+        // Save CSVs
         if (!Files.exists(Config.STUDENT_FILE)) {
             ImportExportService.exportStudents(service.listStudents(), Config.STUDENT_FILE);
         } else {
             ImportExportService.exportStudents(service.listStudents(), Config.STUDENT_FILE, true);
         }
 
-        // Append courses
         if (!Files.exists(Config.COURSE_FILE)) {
             ImportExportService.exportCourses(service.listCourses(), Config.COURSE_FILE);
         } else {
             ImportExportService.exportCourses(service.listCourses(), Config.COURSE_FILE, true);
         }
 
-        // Append enrollments
         if (!Files.exists(Config.ENROLL_FILE)) {
             ImportExportService.exportEnrollments(service.listEnrollments(), Config.ENROLL_FILE);
         } else {
             ImportExportService.exportEnrollments(service.listEnrollments(), Config.ENROLL_FILE, true);
         }
-        Path[] filesToBackup = {Config.STUDENT_FILE, Config.COURSE_FILE, Config.ENROLL_FILE};
-        BackupUtil.backupData(filesToBackup, Config.DATA_FOLDER);
+
+        // Backup entire data folder recursively
+        BackupUtil.backupData(Config.DATA_FOLDER);
 
         System.out.println("Data saved successfully!");
     } catch (IOException e) {
         System.out.println("Error saving data: " + e.getMessage());
     }
 }
-
 
     private static void importData() {
         try {

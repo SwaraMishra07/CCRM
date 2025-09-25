@@ -5,10 +5,15 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+
 public class BackupUtil {
 
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 
+    /**
+     * Recursively backup the entire data folder to a timestamped folder.
+     * Prints total backup size.
+     */
     public static void backupData(Path dataFolder) throws IOException {
         if (!Files.exists(dataFolder)) {
             System.out.println("No data folder found to backup.");
@@ -19,7 +24,7 @@ public class BackupUtil {
         Path backupFolder = dataFolder.resolveSibling("backup_" + timestamp);
         Files.createDirectories(backupFolder);
 
-        // Recursively copy files
+        // Recursively copy all files and subfolders
         Files.walkFileTree(dataFolder, new SimpleFileVisitor<>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
@@ -41,6 +46,9 @@ public class BackupUtil {
         System.out.println("Total backup size: " + totalSize + " bytes");
     }
 
+    /**
+     * Calculate the total size of a folder recursively.
+     */
     private static long calculateSize(Path folder) throws IOException {
         final long[] size = {0};
         Files.walkFileTree(folder, new SimpleFileVisitor<>() {
